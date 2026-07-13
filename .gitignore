@@ -1,0 +1,20 @@
+# Model bundles and datasets (too large for GitHub / regenerated separately)
+models/*.pkl
+data/*.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
