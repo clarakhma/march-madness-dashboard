@@ -23,7 +23,7 @@ HOW TO RUN:
 import warnings
 warnings.filterwarnings("ignore")
 
-import os, pickle
+import os, pickle, urllib.request
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -92,17 +92,41 @@ HERE       = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(HERE, "models")
 DATA_DIR   = os.path.join(HERE, "data")
 
+# Model bundles and data tables are too large for git; they're hosted as assets on a
+# GitHub Release and downloaded on first run instead of being committed to the repo.
+RELEASE_BASE_URL = ("https://github.com/clarakhma/march-madness-dashboard/"
+                     "releases/download/data-v1")
+
 def _load(path):
     with open(path, "rb") as f: return SafeUnpickler(f).load()
+
+def _ensure_file(local_path, filename):
+    if os.path.exists(local_path): return local_path
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    url = f"{RELEASE_BASE_URL}/{filename}"
+    progress = st.progress(0, text=f"Downloading {filename} (first run only)…")
+    def _hook(count, block_size, total_size):
+        if total_size > 0:
+            pct = min(1.0, count * block_size / total_size)
+            progress.progress(pct, text=f"Downloading {filename}… {pct*100:.0f}%")
+    tmp_path = local_path + ".part"
+    try:
+        urllib.request.urlretrieve(url, tmp_path, reporthook=_hook)
+        os.replace(tmp_path, local_path)
+    finally:
+        progress.empty()
+    return local_path
 
 @st.cache_resource(show_spinner="Loading models…")
 def load_bundles():
     out = {}
     for g, fn in [("men","bundle_men.pkl"),("women","bundle_women.pkl")]:
         p = os.path.join(MODELS_DIR, fn)
-        if os.path.exists(p):
-            try:    out[g] = _load(p)
-            except Exception as e: st.warning(f"Could not load {fn}: {e}")
+        try:
+            _ensure_file(p, fn)
+            out[g] = _load(p)
+        except Exception as e:
+            st.warning(f"Could not load {fn}: {e}")
     return out
 
 @st.cache_resource(show_spinner="Loading data…")
@@ -110,9 +134,11 @@ def load_data_files():
     out = {"men": None, "women": None}
     for g, fn in [("men","data_men.pkl"),("women","data_women.pkl")]:
         p = os.path.join(DATA_DIR, fn)
-        if os.path.exists(p):
-            try:    out[g] = _load(p)
-            except: pass
+        try:
+            _ensure_file(p, fn)
+            out[g] = _load(p)
+        except Exception:
+            pass
     return out
 
 
@@ -365,7 +391,8 @@ bundles   = load_bundles()
 data_dict = load_data_files()
 
 if not bundles:
-    st.error("No model files found.")
+    st.error("No model files found, and the automatic download failed. "
+              "Check your internet connection, or place the files manually:")
     st.code("📁 your_folder/\n     dashboard.py\n     models/\n"
             "         bundle_men.pkl\n         bundle_women.pkl\n"
             "     data/\n         data_men.pkl\n         data_women.pkl")

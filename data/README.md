@@ -4,7 +4,9 @@ This folder holds the raw/derived tables the dashboard uses for team lists, seed
 matchups. They are **not tracked in Git** (see root `.gitignore`) — `data_men.pkl` alone is ~240 MB,
 well over GitHub's 100 MB file limit.
 
-Place these two files here before running the app:
+`dashboard.py` downloads them automatically on first run from the repo's
+[`data-v1` GitHub Release](https://github.com/clarakhma/march-madness-dashboard/releases/tag/data-v1)
+and caches them here — no manual step needed for a normal `streamlit run`.
 
 | File | Contents |
 |---|---|
